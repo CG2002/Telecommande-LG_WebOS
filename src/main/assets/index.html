@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14171c">
+<title>Télécommande LG webOS</title>
+<style>
+:root{
+  --bg:#14171c; --panel:#1d2128; --key:#272c35; --key-hi:#323946; --line:#39414f;
+  --txt:#e8ebf0; --dim:#8c95a5; --accent:#e0405f; --ok:#4cc38a; --warn:#e8b04a;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){
+  :root{--bg:#e9ecf1; --panel:#f6f7f9; --key:#dde1e8; --key-hi:#cfd5df; --line:#bcc4d0; --txt:#1a1e25; --dim:#5d6676; color-scheme:light;}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);min-height:100vh;display:flex;justify-content:center}
+main{width:100%;max-width:400px;padding:14px 16px 28px}
+button{font:inherit;color:inherit;border:0;background:var(--key);border-radius:14px;min-height:48px;cursor:pointer;user-select:none;-webkit-user-select:none;transition:background .08s,transform .08s}
+button:active,button.on{background:var(--key-hi);transform:scale(.96)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+
+header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+#state{flex:1;display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:14px;padding:0 14px;min-height:48px;text-align:left}
+#dot{width:10px;height:10px;border-radius:50%;background:var(--dim);flex:none}
+#dot.ok{background:var(--ok)} #dot.wait{background:var(--warn)} #dot.err{background:var(--accent)}
+#msg{font-size:14px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pwr{width:48px;background:var(--accent);color:#fff}
+#pwr:active{background:#c2334f}
+
+#conn{background:var(--panel);border-radius:16px;padding:14px;margin-bottom:12px;display:none}
+#conn.open{display:block}
+#conn label{display:block;font-size:13px;color:var(--dim);margin-bottom:6px}
+#conn input[type=text],#txt{width:100%;min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--txt);padding:0 12px;font:inherit}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+#conn .chk{display:flex;gap:8px;align-items:center;margin:10px 0;font-size:14px}
+#conn .chk input{width:20px;height:20px;flex:none}
+#go{background:var(--accent);color:#fff;width:100%;margin-top:4px}
+.help{font-size:13px;color:var(--dim);margin:10px 0 0}
+
+nav{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--panel);padding:4px;border-radius:14px;margin-bottom:14px}
+nav button{min-height:40px;font-size:14px;background:transparent;border-radius:10px;color:var(--dim)}
+nav button[aria-selected=true]{background:var(--key);color:var(--txt)}
+section{display:none} section.on{display:block}
+
+/* Croix directionnelle : l'anneau est la pièce centrale */
+.ring{position:relative;width:272px;height:272px;margin:6px auto 18px;border-radius:50%;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line)}
+.ring button{position:absolute;background:transparent;border-radius:50%;display:grid;place-items:center;color:var(--dim)}
+.ring button:active{background:var(--key-hi);color:var(--txt)}
+.ring .u{top:8px;left:96px;width:80px;height:72px}
+.ring .d{bottom:8px;left:96px;width:80px;height:72px}
+.ring .l{left:8px;top:96px;width:72px;height:80px}
+.ring .r{right:8px;top:96px;width:72px;height:80px}
+.ring .ok{left:86px;top:86px;width:100px;height:100px;background:var(--key);color:var(--txt);font-weight:600;letter-spacing:.02em}
+.ring svg{width:28px;height:28px}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.rock{display:grid;grid-template-rows:1fr 1fr;background:var(--panel);border-radius:16px;overflow:hidden;min-height:136px}
+.rock button{border-radius:0;background:transparent;display:grid;place-items:center}
+.rock button:active{background:var(--key-hi)}
+.rock .lab{display:none}
+.rocks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;align-items:stretch}
+.mid{display:grid;grid-template-rows:1fr 1fr;gap:8px}
+.col4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.col4 button{min-height:34px;border-radius:8px}
+#cR{background:#d6334f} #cG{background:#2f9d5b} #cY{background:#d9a62e} #cB{background:#3a6fd1}
+.col4 button:active{filter:brightness(1.25)}
+.media{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.keys button{min-height:58px;font-size:22px}
+.apps{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.apps button{min-height:64px;font-weight:600;text-align:left;padding:0 14px}
+#pad{height:280px;border-radius:18px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);display:grid;place-items:center;color:var(--dim);font-size:14px;touch-action:none;text-align:center;padding:20px;margin-bottom:12px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--txt);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <button id="state" aria-label="Réglages de connexion"><span id="dot"></span><span id="msg">Non connecté</span></button>
+    <button id="pwr" aria-label="Éteindre la TV" data-ssap="ssap://system/turnOff"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></button>
+  </header>
+
+  <div id="conn">
+    <label for="ip">Adresse IP de la TV</label>
+    <input id="ip" type="text" inputmode="decimal" placeholder="192.168.1.xx" autocomplete="off">
+    <label class="chk"><input id="sec" type="checkbox"> Connexion sécurisée (wss, port 3001)</label>
+    <button id="go">Connecter</button>
+    <p class="help" id="log" style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px"></p>
+    <p class="help">TV : Paramètres &gt; Général &gt; Appareils &gt; Paramètres de connexion mobile TV &gt; activer « Allumer via Wi‑Fi ». À la première connexion, accepte la demande qui s’affiche sur l’écran de la TV.</p>
+    <p class="help">Si la connexion échoue avec « sécurisée » cochée, ouvre d’abord <b>https://IP:3001</b> dans le navigateur et accepte le certificat.</p>
+  </div>
+
+  <nav role="tablist">
+    <button role="tab" data-tab="t1" aria-selected="true">Télécommande</button>
+    <button role="tab" data-tab="t2" aria-selected="false">Chiffres</button>
+    <button role="tab" data-tab="t3" aria-selected="false">Apps</button>
+    <button role="tab" data-tab="t4" aria-selected="false">Souris</button>
+  </nav>
+
+  <section id="t1" class="on">
+    <div class="ring">
+      <button class="u" data-k="UP" data-rep aria-label="Haut"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+      <button class="d" data-k="DOWN" data-rep aria-label="Bas"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <button class="l" data-k="LEFT" data-rep aria-label="Gauche"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="r" data-k="RIGHT" data-rep aria-label="Droite"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button class="ok" data-k="ENTER">OK</button>
+    </div>
+
+    <div class="grid3">
+      <button data-k="BACK" aria-label="Retour"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+      <button data-k="HOME" aria-label="Accueil"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v10h12V10"/></svg></button>
+      <button data-k="EXIT" aria-label="Quitter"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <button data-k="MENU">Menu</button>
+      <button data-k="INFO">Info</button>
+      <button data-k="ASTERISK">Options</button>
+    </div>
+
+    <div class="rocks">
+      <div class="rock">
+        <button data-ssap="ssap://audio/volumeUp" data-rep aria-label="Volume plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button data-ssap="ssap://audio/volumeDown" data-rep aria-label="Volume moins"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      </div>
+      <div class="mid">
+        <button id="mute" aria-label="Muet"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6"/></svg></button>
+        <button data-ssap="ssap://tv/switchInput" data-p='{"inputId":"HDMI_1"}' style="font-size:13px">HDMI 1</button>
+      </div>
+      <div class="rock">
+        <button data-ssap="ssap://tv/channelUp" data-rep aria-label="Chaîne suivante"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>
+        <button data-ssap="ssap://tv/channelDown" data-rep aria-label="Chaîne précédente"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
+    </div>
+
+    <div class="col4">
+      <button id="cR" data-k="RED" aria-label="Rouge"></button>
+      <button id="cG" data-k="GREEN" aria-label="Vert"></button>
+      <button id="cY" data-k="YELLOW" aria-label="Jaune"></button>
+      <button id="cB" data-k="BLUE" aria-label="Bleu"></button>
+    </div>
+
+    <div class="media">
+      <button data-ssap="ssap://media.controls/rewind" aria-label="Retour rapide"><svg viewBox="0 0 24 24"><path d="M11 6l-7 6 7 6zM20 6l-7 6 7 6z"/></svg></button>
+      <button data-ssap="ssap://media.controls/play" aria-label="Lecture"><svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg></button>
+      <button data-ssap="ssap://media.controls/pause" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button>
+      <button data-ssap="ssap://media.controls/stop" aria-label="Stop"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></button>
+      <button data-ssap="ssap://media.controls/fastForward" aria-label="Avance rapide"><svg viewBox="0 0 24 24"><path d="M13 6l7 6-7 6zM4 6l7 6-7 6z"/></svg></button>
+    </div>
+  </section>
+
+  <section id="t2">
+    <div class="keys">
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button data-k="LIST" style="font-size:14px">Liste</button><button data-k="0">0</button><button data-k="DASH" style="font-size:14px">–</button>
+    </div>
+    <label for="txt" style="font-size:13px;color:var(--dim)">Saisie de texte (champ actif sur la TV)</label>
+    <div class="row" style="margin-top:6px">
+      <input id="txt" type="text" placeholder="Tape puis envoie" autocomplete="off" style="flex:3">
+      <button id="sendTxt" style="flex:1">Envoyer</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="del">Effacer</button>
+      <button id="enter">Valider</button>
+    </div>
+  </section>
+
+  <section id="t3">
+    <div class="apps">
+      <button data-ssap="ssap://system.launcher/launch" data-p='{"id":"netflix"}'>Netflix</button>
+      <button data-ssap="ssap://system.launcher/launch" data-p='{"id":"youtube.leanback.v4"}'>YouTube</button>
+      <button data-ssap="ssap://system.launcher/launch" data-p='{"id":"amazon"}'>Prime Video</button>
+      <button data-ssap="ssap://system.launcher/launch" data-p='{"id":"disney"}'>Disney+</button>
+      <button data-ssap="ssap://system.launcher/launch" data-p='{"id":"com.webos.app.browser"}'>Navigateur</button>
+      <button data-ssap="ssap://system.launcher/launch" data-p='{"id":"com.webos.app.livetv"}'>TV en direct</button>
+      <button data-ssap="ssap://tv/switchInput" data-p='{"inputId":"HDMI_1"}'>HDMI 1</button>
+      <button data-ssap="ssap://tv/switchInput" data-p='{"inputId":"HDMI_2"}'>HDMI 2</button>
+      <button data-ssap="ssap://tv/switchInput" data-p='{"inputId":"HDMI_3"}'>HDMI 3</button>
+      <button data-ssap="ssap://tv/switchInput" data-p='{"inputId":"HDMI_4"}'>HDMI 4</button>
+    </div>
+    <p class="help">Si une appli ne se lance pas, son identifiant diffère sur ton modèle de TV.</p>
+  </section>
+
+  <section id="t4">
+    <div id="pad">Glisse pour déplacer le curseur.<br>Touche pour cliquer. Deux doigts pour faire défiler.</div>
+    <div class="row"><button data-k="BACK">Retour</button><button data-k="HOME">Accueil</button></div>
+  </section>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+/* Pont vers le WebSocket natif de l'appli Android (certificat auto-signé accepté) */
+(function(){
+  if(!window.AndroidWS)return;
+  var socks={},n=0;
+  function NativeWS(url){this.id=++n;this.readyState=0;socks[this.id]=this;AndroidWS.open(this.id,url)}
+  NativeWS.prototype.send=function(d){AndroidWS.send(this.id,String(d))};
+  NativeWS.prototype.close=function(){this.readyState=2;AndroidWS.close(this.id)};
+  window.__ws=function(id,ev,data,code){
+    var s=socks[id];if(!s)return;
+    if(ev==='open'){s.readyState=1;s.onopen&&s.onopen({})}
+    else if(ev==='message'){s.onmessage&&s.onmessage({data:data})}
+    else if(ev==='close'){s.readyState=3;delete socks[id];s.onclose&&s.onclose({code:code})}
+  };
+  window.WS=NativeWS;
+})();
+</script>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var ws=null, pws=null, reqN=0, pending={}, key=null, connected=false;
+
+  function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+  key=ls('lg_key')||null;
+  $('#ip').value=ls('lg_ip')||'';
+  $('#sec').checked=ls('lg_sec')==='1';
+
+  function toast(t){var el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){el.classList.remove('show')},2200)}
+  function status(cls,text){$('#dot').className=cls;$('#msg').textContent=text}
+  function buzz(){try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}}
+
+  var PERMS=["LAUNCH","LAUNCH_WEBAPP","APP_TO_APP","CLOSE","TEST_OPEN","TEST_PROTECTED","CONTROL_AUDIO","CONTROL_DISPLAY","CONTROL_INPUT_JOYSTICK","CONTROL_INPUT_MEDIA_RECORDING","CONTROL_INPUT_MEDIA_PLAYBACK","CONTROL_INPUT_TV","CONTROL_POWER","CONTROL_TV_SCREEN","CONTROL_TV_STANDBY","CONTROL_MOUSE_AND_KEYBOARD","CONTROL_INPUT_TEXT","READ_APP_STATUS","READ_CURRENT_CHANNEL","READ_INPUT_DEVICE_LIST","READ_NETWORK_STATE","READ_RUNNING_APPS","READ_TV_CHANNEL_LIST","READ_INSTALLED_APPS","WRITE_NOTIFICATION_TOAST","READ_POWER_STATE","READ_COUNTRY_INFO"];
+
+  function request(uri,payload){
+    return new Promise(function(res){
+      if(!ws||ws.readyState!==1){res(null);return}
+      var id='r'+(++reqN);
+      pending[id]=res;
+      ws.send(JSON.stringify({type:'request',id:id,uri:uri,payload:payload||{}}));
+      setTimeout(function(){if(pending[id]){delete pending[id];res(null)}},5000);
+    });
+  }
+
+  function openPointer(){
+    request('ssap://com.webos.service.networkinput/getPointerInputSocket').then(function(r){
+      if(r&&r.payload&&r.payload.socketPath){
+        try{
+          pws=new (window.WS||WebSocket)(r.payload.socketPath);
+          pws.onclose=function(){pws=null};
+        }catch(e){pws=null}
+      }
+    });
+  }
+
+  function log(t){var l=$('#log');l.textContent=(l.textContent?l.textContent+'\n':'')+t}
+
+  function connect(forced){
+    var ip=$('#ip').value.trim();
+    if(!ip){toast('Entre l’adresse IP de la TV');return}
+    var retry=(typeof forced==='boolean');
+    var sec=retry?forced:$('#sec').checked;
+    if(!retry){$('#log').textContent='Page : '+location.protocol+' ('+(location.origin||'origine inconnue')+')'}
+    ls('lg_ip',ip);ls('lg_sec',sec?'1':'0');
+    if(ws){try{ws.onclose=null;ws.close()}catch(e){}}
+    status('wait','Connexion…');
+    var url=(sec?'wss://':'ws://')+ip+(sec?':3001':':3000');
+    log('Essai : '+url);
+    var opened=false;
+    try{ws=new (window.WS||WebSocket)(url)}catch(e){log('Erreur : '+e.message);status('err','Adresse invalide');$('#conn').classList.add('open');return}
+    var cur=ws;
+    var to=setTimeout(function(){if(!opened){try{cur.close()}catch(e){}}},6000);
+    ws.onopen=function(){
+      opened=true;clearTimeout(to);log('Socket ouvert, association…');
+      var p={forcePairing:false,pairingType:'PROMPT',manifest:{manifestVersion:1,permissions:PERMS}};
+      if(key)p['client-key']=key;
+      ws.send(JSON.stringify({type:'register',id:'register_0',payload:p}));
+    };
+    ws.onmessage=function(ev){
+      var m;try{m=JSON.parse(ev.data)}catch(e){return}
+      if(m.type==='registered'){
+        key=m.payload['client-key'];ls('lg_key',key);
+        connected=true;status('ok','Connecté');log('Connecté');
+        $('#conn').classList.remove('open');
+        openPointer();
+      }else if(m.id==='register_0'&&m.type==='response'){
+        status('wait','Accepte la demande sur la TV');
+      }else if(m.type==='error'&&m.id==='register_0'){
+        key=null;ls('lg_key','');status('err','Association refusée');log('Association refusée : '+((m.error)||''));
+      }else if(pending[m.id]){
+        pending[m.id](m);delete pending[m.id];
+      }
+    };
+    ws.onclose=function(ev){
+      clearTimeout(to);
+      if(!opened){
+        log('Échec '+url+' (code '+ev.code+')');
+        if(!retry){$('#sec').checked=!sec;connect(!sec);return}
+        status('err','Échec de connexion');$('#conn').classList.add('open');
+      }else{
+        log('Fermé (code '+ev.code+')');
+        if(connected){connected=false;status('err','Déconnecté')}
+      }
+      pws=null;
+    };
+  }
+
+  function press(name){
+    if(pws&&pws.readyState===1){pws.send('type:button\nname:'+name+'\n\n');buzz()}
+    else toast('Non connecté')
+  }
+  function ssap(uri,p){
+    if(!connected){toast('Non connecté');return}
+    buzz();request(uri,p);
+  }
+
+  // Boutons
+  function bind(b){
+    var timer=null,iv=null;
+    function fire(){
+      if(b.dataset.k)press(b.dataset.k);
+      else if(b.dataset.ssap)ssap(b.dataset.ssap,b.dataset.p?JSON.parse(b.dataset.p):{});
+    }
+    function stop(){clearTimeout(timer);clearInterval(iv);b.classList.remove('on')}
+    b.addEventListener('pointerdown',function(e){
+      e.preventDefault();fire();b.classList.add('on');
+      if(b.hasAttribute('data-rep')){timer=setTimeout(function(){iv=setInterval(fire,130)},420)}
+    });
+    ['pointerup','pointerleave','pointercancel'].forEach(function(t){b.addEventListener(t,stop)});
+    b.addEventListener('contextmenu',function(e){e.preventDefault()});
+  }
+  document.querySelectorAll('[data-k],[data-ssap]').forEach(bind);
+
+  // Muet (bascule)
+  $('#mute').addEventListener('click',function(){
+    if(!connected){toast('Non connecté');return}
+    request('ssap://audio/getStatus').then(function(r){
+      var muted=!!(r&&r.payload&&(r.payload.mute||(r.payload.volumeStatus&&r.payload.volumeStatus.muteStatus)));
+      request('ssap://audio/setMute',{mute:!muted});
+    });
+  });
+
+  // Texte
+  $('#sendTxt').addEventListener('click',function(){
+    var t=$('#txt').value;if(!t)return;
+    ssap('ssap://com.webos.service.ime/insertText',{text:t,replace:0});$('#txt').value='';
+  });
+  $('#del').addEventListener('click',function(){ssap('ssap://com.webos.service.ime/deleteCharacters',{count:1})});
+  $('#enter').addEventListener('click',function(){ssap('ssap://com.webos.service.ime/sendEnterKey',{})});
+
+  // Souris
+  (function(){
+    var pad=$('#pad'),pts={},lx=0,ly=0,moved=false,t0=0,two=false,sy=0;
+    pad.addEventListener('pointerdown',function(e){
+      pad.setPointerCapture(e.pointerId);pts[e.pointerId]=e;
+      if(Object.keys(pts).length===1){lx=e.clientX;ly=e.clientY;moved=false;t0=Date.now();two=false}
+      else{two=true;sy=e.clientY}
+    });
+    pad.addEventListener('pointermove',function(e){
+      if(!pts[e.pointerId])return;pts[e.pointerId]=e;
+      if(!pws||pws.readyState!==1)return;
+      if(two){var d=e.clientY-sy;if(Math.abs(d)>6){pws.send('type:scroll\ndx:0\ndy:'+Math.round(d)+'\n\n');sy=e.clientY;moved=true}return}
+      var dx=Math.round((e.clientX-lx)*2),dy=Math.round((e.clientY-ly)*2);
+      if(dx||dy){moved=true;pws.send('type:move\ndx:'+dx+'\ndy:'+dy+'\ndown:0\n\n');lx=e.clientX;ly=e.clientY}
+    });
+    function up(e){
+      delete pts[e.pointerId];
+      if(!Object.keys(pts).length){
+        if(!moved&&!two&&Date.now()-t0<300&&pws&&pws.readyState===1){pws.send('type:click\n\n');buzz()}
+        two=false;
+      }
+    }
+    pad.addEventListener('pointerup',up);pad.addEventListener('pointercancel',up);
+  })();
+
+  // Onglets et panneau de connexion
+  document.querySelectorAll('nav button').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('nav button').forEach(function(x){x.setAttribute('aria-selected',x===b)});
+      document.querySelectorAll('section').forEach(function(s){s.classList.toggle('on',s.id===b.dataset.tab)});
+    });
+  });
+  $('#state').addEventListener('click',function(){$('#conn').classList.toggle('open')});
+  $('#go').addEventListener('click',function(){connect()});
+
+  if($('#ip').value){connect()}else{$('#conn').classList.add('open')}
+})();
+</script>
+</body>
+</html>
